@@ -26,6 +26,7 @@ statsPathJson = 'stats.json' #path to statfile json
 statsPathCSV = 'stats.txt' #path to statfile csv
 
 #Sheduled job for TPS
+countOld = 0
 def jobRPC():
   #Get latest block count from nano RPC service
   if not rpc:
@@ -36,8 +37,15 @@ def jobRPC():
     blkCount = blockCount['count']
     blkUnch = blockCount['unchecked']
     timestamp = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-    entryJSON = {'time':timestamp, 'count':blkCount, 'unchecked':blkUnch}
-    entryCSV = [timestamp,str(blkCount),str(blkUnch)]
+
+    global countOld
+    if countOld == 0: #first iteration => tps=0
+      countOld = blkCount
+    tps = (blkCount - countOld) / tpsInterval #tps based on previous iteration
+    countOld = blkCount #update value for next iteration
+
+    entryJSON = {'time':timestamp, 'count':blkCount, 'unchecked':blkUnch, 'TPS':tps}
+    entryCSV = [timestamp,str(blkCount),str(blkUnch),str(tps)]
     print(entryJSON)
 
   except Exception as e:
@@ -67,8 +75,8 @@ def jobRPC():
     return
 
 #Define scheduled job for coinmarketcap, 20 sec
-schedule.every(tps_interval).seconds.do(jobRPC)
+schedule.every(tpsInterval).seconds.do(jobRPC)
 
 while 1:
-    schedule.run_pending()
-    time.sleep(1)
+  schedule.run_pending()
+  time.sleep(1)
