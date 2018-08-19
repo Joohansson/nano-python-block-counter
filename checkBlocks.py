@@ -74,8 +74,11 @@ def jobRPC():
     print('Could not save csv file Error: %r' %e)
     return
 
-#Define scheduled job for coinmarketcap, 20 sec
+#Define scheduled job
 schedule.every(tpsInterval).seconds.do(jobRPC)
+
+#Run one time now
+jobRPC()
 
 while 1:
   schedule.run_pending()
