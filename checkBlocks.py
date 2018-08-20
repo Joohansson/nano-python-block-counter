@@ -1,33 +1,39 @@
-#Outputs nano block count from node in format:
-#JSON: {'time': '2018-08-18 15:52:05', 'count': 1723175, 'unchecked': 8685}
-#CSV: 2018-08-18 15:52:05;1723175;8685
-#Save stats to json and csv files
-
-#Instructions:
-#Install python > 3 and pip3
-#pip3 install nano-python
-#pip3 install schedule
-#Change settings below and run with python3 blocks.py
-
-
+#sudo apt-get update
+#sudo apt-get -y install python3-pip
 #Require installation
-from nano import RPCClient
-import schedule
+from nano import RPCClient #pip3 install nano-python
+import schedule #pip3 install schedule
 
 #Standard python
 import json
 import datetime
 import time
+import http.client
+import requests
 
 #Settings
 rpc = RPCClient('http://127.0.0.1:55000') #nano node address and port
-tps_interval = 5 #update interval in seconds
-statsPathJson = 'stats.json' #path to statfile json
-statsPathCSV = 'stats.txt' #path to statfile csv
+tpsInterval = [10,30,60] #intervals defined in seconds for local logging (any set of numbers work)
+enableStatfiles = False #set to True to enable saving to log files
+enableOutput = True #set to True to enable console logs
+statsPath = 'stats' #path to statfile basename (extension will be added automatically and two files for each interval will be created)
+
+#If sending to server to collect stats
+enableServer = True #set to True
+secret = 'password' #secret ID for server to accept data
+name = 'Joohansson 1' #custom node name will be visible on stat webpage
+
+serverInterval = 60 #interval in seconds to push stat to server (server is coded to only accept a certain value here, only change if running own server)
+serverURI = 'https://nanoticker.info/tps_beta_push.php' #php code to accept request. Don't change unless you have own server
+
+#Vars (dont touch)
+headers = { "charset" : "utf-8", "Content-Type": "application/json" }
+countOld = []
+for i in tpsInterval:
+  countOld.append(0)
 
 #Sheduled job for TPS
-countOld = 0
-def jobRPC():
+def jobRPC(interval):
   #Get latest block count from nano RPC service
   if not rpc:
     return
@@ -37,49 +43,91 @@ def jobRPC():
     blkCount = blockCount['count']
     blkUnch = blockCount['unchecked']
     timestamp = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-
     global countOld
-    if countOld == 0: #first iteration => tps=0
-      countOld = blkCount
-    tps = (blkCount - countOld) / tpsInterval #tps based on previous iteration
-    countOld = blkCount #update value for next iteration
+    if countOld[interval] == 0: #first iteration => tps=0
+      for i,int in enumerate(countOld): #initialize memory
+        countOld[i] = blkCount
+      tps = 0
+    else:
+      tps = (blkCount - countOld[interval]) / tpsInterval[interval] #tps based on previous iteration
+    countOld[interval] = blkCount #update value for next iteration
 
-    entryJSON = {'time':timestamp, 'count':blkCount, 'unchecked':blkUnch, 'TPS':tps}
+    entryJSON = {'time':timestamp, 'count':blkCount, 'unchecked':blkUnch, 'interval': tpsInterval[interval], 'tps':tps}
     entryCSV = [timestamp,str(blkCount),str(blkUnch),str(tps)]
-    print(entryJSON)
+
+    if enableOutput:
+      print(json.dumps(entryJSON))
 
   except Exception as e:
     print('Could not get blocks from node. Error: %r' %e)
     return
 
-  #Append stats to file or create new file
-  try:
-    with open(statsPathJson, 'a') as outfile:
-      outfile.write('%r\n' %entryJSON)
+  if enableStatfiles:
+    #Append stats to file or create new file
+    try:
+      with open(statsPath + '_' + str(tpsInterval[interval]) + '.json', 'a') as outfile:
+        outfile.write('%r\n' %entryJSON)
 
-  except Exception as e:
-    print('Could not save json file. Error: %r' %e)
+    except Exception as e:
+      print('Could not save json file. Error: %r' %e)
+      return
+
+    #Append stats to file or create new file
+    try:
+      with open(statsPath + '_' + str(tpsInterval[interval]) + '.txt', 'a') as outfile:
+        #Convert all of the items in lst to strings (for str.join)
+        lst = map(str, entryCSV)
+        #Join the items together with commas
+        line = ";".join(lst)
+        outfile.write(line+"\n")
+
+    except Exception as e:
+      print('Could not save csv file Error: %r' %e)
+      return
+
+#Job for pushing to server
+def jobRPCServer():
+  #Get latest block count from nano RPC service
+  if not rpc:
     return
 
-  #Append stats to file or create new file
   try:
-    with open(statsPathCSV, 'a') as outfile:
-      #Convert all of the items in lst to strings (for str.join)
-      lst = map(str, entryCSV)
-      #Join the items together with commas
-      line = ";".join(lst)
-      outfile.write(line+"\n")
+    blockCount = rpc.block_count()
+    blkCount = blockCount['count']
+    blkUnch = blockCount['unchecked']
+    unixtime = time.time()
+
+    postJSON = {'time':unixtime, 'count':blkCount, 'unchecked':blkUnch, 'interval': serverInterval, 'id': secret, 'name': name}
 
   except Exception as e:
-    print('Could not save csv file Error: %r' %e)
+    print('Could not get blocks from node. Error: %r' %e)
+    return
+
+  #Send data to remote server
+  try:
+    r = requests.post(serverURI, json=postJSON)
+    #print(r.json())
+    if r.json() == 401:
+      print('Wrong password for server')
+    elif not r.status_code == 200:
+      print('Could not connect to remote server. Http code: %r' %r.status_code)
+
+  except Exception as e:
+    print('Could not post result to remote server. Error: %r' %e)
     return
 
 #Define scheduled job
-schedule.every(tpsInterval).seconds.do(jobRPC)
+for i,int in enumerate(tpsInterval):
+  schedule.every(int).seconds.do(jobRPC, interval=i)
+
+#Schedule job for sending stat to server
+if enableServer:
+  schedule.every(serverInterval).seconds.do(jobRPCServer)
+  jobRPCServer() #Init values one time directly
 
 #Run one time now
-jobRPC()
+jobRPC(interval=0)
 
 while 1:
-  schedule.run_pending()
-  time.sleep(1)
+    schedule.run_pending()
+    time.sleep(1)
