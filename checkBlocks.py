@@ -12,7 +12,7 @@ import http.client
 import requests
 
 #Settings
-rpc = RPCClient('http://127.0.0.1:55000') #nano node address and port
+rpc = RPCClient('http://127.0.0.1:55000') #nano node address and port (I use this in node config: "::ffff:127.0.0.1"). You can also try with "http://[::1]:55000"
 tpsInterval = [10,30,60] #intervals defined in seconds for local logging (any set of numbers work)
 enableStatfiles = False #set to True to enable saving to log files
 enableOutput = True #set to True to enable console logs
@@ -27,7 +27,6 @@ serverInterval = 60 #interval in seconds to push stat to server (server is coded
 serverURI = 'https://nanoticker.info/tps_beta_push.php' #php code to accept request. Don't change unless you have own server
 
 #Vars (dont touch)
-headers = { "charset" : "utf-8", "Content-Type": "application/json" }
 countOld = []
 for i in tpsInterval:
   countOld.append(0)
@@ -129,5 +128,5 @@ if enableServer:
 jobRPC(interval=0)
 
 while 1:
-    schedule.run_pending()
-    time.sleep(1)
+  schedule.run_pending()
+  time.sleep(1)
