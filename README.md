@@ -12,8 +12,11 @@ Outputs nano block count from node in format (Time in UTC):
 Save stats to json and csv files
 
 ### Instructions
-* Install python version > 3 and pip
+* Install python version > 3 and pip (sudo apt-get -y install python3-pip)
 * pip3 install nano-python
 * pip3 install schedule
 * Change settings in checkBlocks.py to match your nano node, interval and file paths
 * Run with python3 checkBlocks.py
+
+### Optional: Push stat to [Demo server](https://nanoticker.info/tps_beta.php)
+* Change settings to match server settings. You can get "secret" from me on [Reddit](https://www.reddit.com/user/joohansson/) if you have a good node and want to test nano beta.
