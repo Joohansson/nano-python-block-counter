@@ -6,7 +6,7 @@ Library used: [nano-python](https://github.com/dourvaris/nano-python)
 
 Outputs nano block count from node in format (Time in UTC):
 
-* JSON: {'time': '2018-08-18 15:52:05', 'count': 1723175, 'unchecked': 8685}
+* JSON: {"time": "2018-08-20 19:29:49", "count": 1931263, "unchecked": 8115, "interval": 10, "tps": 1.6}
 * CSV: 2018-08-18 15:52:05;1723175;8685
 
 Save stats to json and csv files
