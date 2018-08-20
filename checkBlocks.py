@@ -19,9 +19,9 @@ enableOutput = True #set to True to enable console logs
 statsPath = 'stats' #path to statfile basename (extension will be added automatically and two files for each interval will be created)
 
 #If sending to server to collect stats
-enableServer = True #set to True
+enableServer = False #set to True
 secret = 'password' #secret ID for server to accept data
-name = 'Joohansson 1' #custom node name will be visible on stat webpage
+name = 'Awesome node 1' #custom node name will be visible on stat webpage
 
 serverInterval = 60 #interval in seconds to push stat to server (server is coded to only accept a certain value here, only change if running own server)
 serverURI = 'https://nanoticker.info/tps_beta_push.php' #php code to accept request. Don't change unless you have own server
