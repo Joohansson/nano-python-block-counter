@@ -23,7 +23,7 @@ enableServer = False #set to True
 secret = 'password' #secret ID for server to accept data
 name = 'Awesome node 1' #custom node name will be visible on stat webpage
 
-serverInterval = 60 #interval in seconds to push stat to server (server is coded to only accept a certain value here, only change if running own server)
+serverInterval = 30 #interval in seconds to push stat to server (server is coded to only accept a certain value here, only change if running own server)
 serverURI = 'https://nanoticker.info/tps_beta_push.php' #php code to accept request. Don't change unless you have own server
 
 #Vars (dont touch)
