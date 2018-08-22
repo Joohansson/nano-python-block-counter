@@ -12,21 +12,22 @@ import http.client
 import requests
 
 #Settings
-rpc = RPCClient('http://127.0.0.1:55000') #nano node address and port (I use this in node config: "::ffff:127.0.0.1"). You can also try with "http://[::1]:55000"
-tpsInterval = [10,30,60] #intervals defined in seconds for local logging (any set of numbers work)
-enableStatfiles = False #set to True to enable saving to log files
-enableOutput = True #set to True to enable console logs
+rpc = RPCClient('http://127.0.0.1:55000') #nano node address and port(I use this in node config: "::ffff:127.0.0.1"). You can also try with "http://[::1]:55000"
+tpsInterval = [60,300,1800] #intervals defined in seconds for local logging (any set of numbers work)
+enableStatfiles = False #set to True (not true) to enable saving to log files
+enableOutput = True #set to True (not true) to enable console logs
 statsPath = 'stats' #path to statfile basename (extension will be added automatically and two files for each interval will be created)
 
 #If sending to server to collect stats
-enableServer = False #set to True
+enableServer = False #set to True (not true)
 secret = 'password' #secret ID for server to accept data
-name = 'Awesome node 1' #custom node name will be visible on stat webpage
+name = 'Awesome node' #custom node name will be visible on stat webpage
 
 serverInterval = 30 #interval in seconds to push stat to server (server is coded to only accept a certain value here, only change if running own server)
 serverURI = 'https://nanoticker.info/tps_beta_push.php' #php code to accept request. Don't change unless you have own server
 
 #Vars (dont touch)
+headers = { "charset" : "utf-8", "Content-Type": "application/json" }
 countOld = []
 for i in tpsInterval:
   countOld.append(0)
@@ -41,7 +42,10 @@ def jobRPC(interval):
     blockCount = rpc.block_count()
     blkCount = blockCount['count']
     blkUnch = blockCount['unchecked']
+    peers = rpc.peers()
     timestamp = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
+    #Calculate TPS based on previous values
     global countOld
     if countOld[interval] == 0: #first iteration => tps=0
       for i,int in enumerate(countOld): #initialize memory
@@ -51,8 +55,9 @@ def jobRPC(interval):
       tps = (blkCount - countOld[interval]) / tpsInterval[interval] #tps based on previous iteration
     countOld[interval] = blkCount #update value for next iteration
 
-    entryJSON = {'time':timestamp, 'count':blkCount, 'unchecked':blkUnch, 'interval': tpsInterval[interval], 'tps':tps}
-    entryCSV = [timestamp,str(blkCount),str(blkUnch),str(tps)]
+    #Create json and csv definitions
+    entryJSON = {'time':timestamp, 'count':blkCount, 'unchecked':blkUnch, 'peers': len(peers), 'interval': tpsInterval[interval], 'tps':tps}
+    entryCSV = [timestamp, str(blkCount), str(blkUnch), str(len(peers)), str(tpsInterval[interval]), str(tps)]
 
     if enableOutput:
       print(json.dumps(entryJSON))
@@ -94,9 +99,10 @@ def jobRPCServer():
     blockCount = rpc.block_count()
     blkCount = blockCount['count']
     blkUnch = blockCount['unchecked']
+    peers = rpc.peers()
     unixtime = time.time()
 
-    postJSON = {'time':unixtime, 'count':blkCount, 'unchecked':blkUnch, 'interval': serverInterval, 'id': secret, 'name': name}
+    postJSON = {'time':unixtime, 'count':blkCount, 'unchecked':blkUnch, 'interval': serverInterval, 'id': secret, 'name': name, 'peers': len(peers)}
 
   except Exception as e:
     print('Could not get blocks from node. Error: %r' %e)
