@@ -8,7 +8,6 @@ import schedule #pip3 install schedule
 import json
 import datetime
 import time
-import http.client
 import requests
 
 #Settings
