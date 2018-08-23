@@ -99,9 +99,10 @@ def jobRPCServer():
     blkCount = blockCount['count']
     blkUnch = blockCount['unchecked']
     peers = rpc.peers()
+    version = rpc.version()['node_vendor']
     unixtime = time.time()
 
-    postJSON = {'time':unixtime, 'count':blkCount, 'unchecked':blkUnch, 'interval': serverInterval, 'id': secret, 'name': name, 'peers': len(peers)}
+    postJSON = {'time':unixtime, 'count':blkCount, 'unchecked':blkUnch, 'interval': serverInterval, 'id': secret, 'name': name, 'peers': len(peers), 'version':version}
 
   except Exception as e:
     print('Could not get blocks from node. Error: %r' %e)
