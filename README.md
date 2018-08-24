@@ -20,3 +20,4 @@ Save stats to json and csv files
 
 ### Optional: Push stat to [Demo server](https://nanoticker.info/tps_beta.php)
 * Change settings to match server settings. You can get "secret" from me on [Reddit](https://www.reddit.com/user/joohansson/) if you have a good node and want to test nano beta.
+* Set enableServer = True
