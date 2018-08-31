@@ -18,7 +18,7 @@ Save stats to json and csv files
 * Change settings in checkBlocks.py to match your nano node path, intervals and file path. Logfile and console output are optional.
 * Run with python3 checkBlocks.py
 
-### Optional: Push stat to [Demo server](https://nanoticker.info/tps_beta.php)
+### Optional: Push stat to [Demo server](https://beta.nanoticker.info)
 * Change settings to match server settings. You can get "secret" from me on [Reddit](https://www.reddit.com/user/joohansson/) if you have a good node and want to test nano beta.
 * Set enableServer = True
 
