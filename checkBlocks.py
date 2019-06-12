@@ -16,7 +16,7 @@ import requests
 #Settings
 rpc = RPCClient('http://[::1]:55000') #nano node address and port(I use this in node config: "::ffff:127.0.0.1"). You can also try with "http://[::1]:55000"
 websocketURL = '[::1]:57000' #websocket url defined in nano config.json (must be enabled in config if you want confirmation per second)
-tpsInterval = [60, 300, 600, 3600] #intervals defined in seconds for local logging (any set of numbers work)
+tpsInterval = [10, 60, 300, 600, 3600] #intervals defined in seconds for local logging (any set of numbers work)
 enableStatfiles = False #set to True (not true) to enable saving to log files
 enableOutput = True #set to True (not true) to enable console logs
 enableCPS = True #set to True to enable confirmations per second from websocket subscription
