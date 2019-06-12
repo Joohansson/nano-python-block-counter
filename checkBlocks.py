@@ -14,20 +14,21 @@ import time
 import requests
 
 #Settings
-rpc = RPCClient('http://127.0.0.1:55000') #nano node address and port(I use this in node config: "::ffff:127.0.0.1"). You can also try with "http://[::1]:55000"
+rpc = RPCClient('http://[::1]:55000') #nano node address and port(I use this in node config: "::ffff:127.0.0.1"). You can also try with "http://[::1]:55000"
 websocketURL = '[::1]:57000' #websocket url defined in nano config.json (must be enabled in config if you want confirmation per second)
 tpsInterval = [10, 60, 300, 600, 3600] #intervals defined in seconds for local logging (any set of numbers work)
 enableStatfiles = False #set to True (not true) to enable saving to log files
 enableOutput = True #set to True (not true) to enable console logs
-enableCPS = False #set to True to enable confirmations per second from websocket subscription
+enableCPS = True #set to True to enable confirmations per second from websocket subscription
 statsPath = 'stats' #path to statfile basename (extension will be added automatically and two files for each interval will be created)
 
 #If sending to server to collect stats
 enableServer = False #set to True (not true)
-secret = 'password' #secret ID for server to accept data
-name = 'Awesome node' #custom node name will be visible on stat webpage
+secret = 'secret password not given by default' #secret ID for server to accept data
+name = 'Awesome Node' #custom node name will be visible on stat webpage
 
 serverInterval = 15 #interval in seconds to push stat to server (server is coded to only accept a certain value here, only change if running own server)
+serverCPSInterval = 300 #interval in seconds for calculating CPS, please don't change
 serverURI = 'https://beta.nanoticker.info/tps_beta_push.php' #php code to accept request. Don't change unless you have own server
 
 #Vars (dont touch)
@@ -35,6 +36,8 @@ headers = { "charset" : "utf-8", "Content-Type": "application/json" }
 countOld = []
 confCount = [] #contains confirmation count for different intervals
 cps = [] #contains CPS for different intervals
+serverCPS = 0 #CPS value sent to server (if enabled)
+
 for i in tpsInterval:
   countOld.append(0)
   confCount.append(0) #for CPS subscription
@@ -113,7 +116,7 @@ def jobRPCServer():
     version = rpc.version()['node_vendor']
     unixtime = time.time()
 
-    postJSON = {'time':unixtime, 'count':blkCount, 'unchecked':blkUnch, 'interval': serverInterval, 'id': secret, 'name': name, 'peers': len(peers), 'version':version}
+    postJSON = {'time':unixtime, 'count':blkCount, 'unchecked':blkUnch, 'interval': serverInterval, 'id': secret, 'name': name, 'peers': len(peers), 'version': version, 'cps': serverCPS}
 
   except Exception as e:
     print('Could not get blocks from node. Error: %r' %e)
@@ -160,8 +163,11 @@ async def cpsTask():
 
         init = True
         startTimes = []
+        serverStartTime = 0
+        serverConf = 0 #number of confirmations until last report to server
         global confCount
         global cps
+        global serverCPS
 
         while 1:
           rec = json.loads(await websocket.recv())
@@ -170,31 +176,40 @@ async def cpsTask():
             message = rec["message"]
 
             if topic == "confirmation":
-              #print("Block confirmed: {}".format(message))
-              #Start the clock on first confirmation
+                #print("Block confirmed: {}".format(message))
+                #Start the clock on first confirmation
                 if init:
                   init = False
 
                   for i in tpsInterval:
                     startTimes.append(time.time()) #start measure time for different intervals
+                    serverStartTime = time.time() #start time for server cps
 
                 for i,conf in enumerate(confCount):
                   confCount[i] = confCount[i] + 1
 
-                  #Update CPS 1 second before the TPS function prints it or it will not be updated until next iteration
-                  if ((time.time() - startTimes[i]) >= tpsInterval[i] - 1):
-                    cps[i] = conf / (time.time() - startTimes[i])
+                  #Update CPS 5 seconds before the TPS function prints it or it will not be updated until next iteration
+                  if ((time.time() - startTimes[i]) >= tpsInterval[i] - 0):
+                    cps[i] = confCount[i] / (time.time() - startTimes[i])
                     confCount[i] = 0
-                    startTimes[i] = time.time() #sreset time
+                    startTimes[i] = time.time() #reset time
+
+                serverConf = serverConf + 1
+                #update cps to be sent to server in its own preconfigured interval
+                if ((time.time() - serverStartTime) >= serverCPSInterval):
+                  serverCPS = serverConf / (time.time() - serverStartTime)
+                  serverConf = 0
+                  serverStartTime = time.time() #reset time
 
     except ConnectionRefusedError:
       print("Error connecting to websocket server. Make sure you have enabled it in ~/Nano/config.json")
 
 async def tpsTask():
-  jobRPC(interval=0)
+  time.sleep(10) #wait 10sec before starting the tps task so the cps task always will calculate slightly earlier or the 1h average would not come until 2h
+  #jobRPC(interval=0) #init
   while 1:
     schedule.run_pending()
-    await asyncio.sleep(1)
+    await asyncio.sleep(0.01)
 
 loop = asyncio.get_event_loop()
 if enableCPS:
