@@ -35,16 +35,17 @@ serverURI = 'https://beta.nanoticker.info/tps_beta_push.php' #php code to accept
 headers = { "charset" : "utf-8", "Content-Type": "application/json" }
 countOld = []
 confCount = [] #contains confirmation count for different intervals
-cps = [] #contains CPS for different intervals
-serverCPS = 0 #CPS value sent to server (if enabled)
+serverConf = 0 #number of confirmations until last report to server
 
 for i in tpsInterval:
   countOld.append(0)
   confCount.append(0) #for CPS subscription
-  cps.append(0)
 
 #Sheduled job for TPS
 def jobRPC(interval):
+  global countOld
+  global confCount
+
   #Get latest block count from nano RPC service
   if not rpc:
     return
@@ -59,7 +60,6 @@ def jobRPC(interval):
     timestamp = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
     #Calculate TPS based on previous values
-    global countOld
     if countOld[interval] == 0: #first iteration => tps=0
       for i,int in enumerate(countOld): #initialize memory
         countOld[i] = blkCount
@@ -68,9 +68,13 @@ def jobRPC(interval):
       tps = (blkCount - countOld[interval]) / tpsInterval[interval] #tps based on previous iteration
     countOld[interval] = blkCount #update value for next iteration
 
+    cps = confCount[interval] / tpsInterval[interval]
+
     #Create json and csv definitions
-    entryJSON = {'time':timestamp, 'count':blkCount, 'unchecked':blkUnch, 'peers': len(peers), 'interval': tpsInterval[interval], 'tps':arred(tps,2), 'cps':arred(cps[interval],2)}
-    entryCSV = [timestamp, str(blkCount), str(blkUnch), str(len(peers)), str(tpsInterval[interval]), str(arred(tps,2)), str(arred(cps[interval],2))]
+    entryJSON = {'time':timestamp, 'count':blkCount, 'unchecked':blkUnch, 'peers': len(peers), 'interval': tpsInterval[interval], 'tps':arred(tps,2), 'cps':arred(cps,2)}
+    entryCSV = [timestamp, str(blkCount), str(blkUnch), str(len(peers)), str(tpsInterval[interval]), str(arred(tps,2)), str(arred(cps,2))]
+
+    confCount[interval] = 0 #reset for next interval measure
 
     if enableOutput:
       print(json.dumps(entryJSON))
@@ -104,6 +108,9 @@ def jobRPC(interval):
 
 #Job for pushing to server
 def jobRPCServer():
+  global serverConf
+  global serverCPSInterval
+
   #Get latest block count from nano RPC service
   if not rpc:
     return
@@ -115,8 +122,11 @@ def jobRPCServer():
     peers = rpc.peers()
     version = rpc.version()['node_vendor']
     unixtime = time.time()
+    serverCPS = serverConf / serverCPSInterval
 
     postJSON = {'time':unixtime, 'count':blkCount, 'unchecked':blkUnch, 'interval': serverInterval, 'id': secret, 'name': name, 'peers': len(peers), 'version': version, 'cps': serverCPS}
+
+    serverConf = 0 #reset for next interval measure
 
   except Exception as e:
     print('Could not get blocks from node. Error: %r' %e)
@@ -162,12 +172,8 @@ async def cpsTask():
         #print(await websocket.recv())  # ack
 
         init = True
-        startTimes = []
-        serverStartTime = 0
-        serverConf = 0 #number of confirmations until last report to server
+        global serverConf
         global confCount
-        global cps
-        global serverCPS
 
         while 1:
           rec = json.loads(await websocket.recv())
@@ -181,32 +187,16 @@ async def cpsTask():
                 if init:
                   init = False
 
-                  for i in tpsInterval:
-                    startTimes.append(time.time()) #start measure time for different intervals
-                    serverStartTime = time.time() #start time for server cps
-
                 for i,conf in enumerate(confCount):
                   confCount[i] = confCount[i] + 1
 
-                  #Update CPS
-                  if ((time.time() - startTimes[i]) >= tpsInterval[i]):
-                    cps[i] = confCount[i] / (time.time() - startTimes[i])
-                    confCount[i] = 0
-                    startTimes[i] = time.time() #reset time
-
                 serverConf = serverConf + 1
-                #update cps to be sent to server in its own preconfigured interval
-                if ((time.time() - serverStartTime) >= serverCPSInterval):
-                  serverCPS = serverConf / (time.time() - serverStartTime)
-                  serverConf = 0
-                  serverStartTime = time.time() #reset time
 
     except ConnectionRefusedError:
       print("Error connecting to websocket server. Make sure you have enabled it in ~/Nano/config.json")
 
 async def tpsTask():
-  time.sleep(10) #wait 10sec before starting the tps task so the cps task always will calculate slightly earlier or the 1h average would not come until 2h
-  #jobRPC(interval=0) #init
+  jobRPC(interval=0) #init
   while 1:
     schedule.run_pending()
     await asyncio.sleep(0.01)
