@@ -35,7 +35,8 @@ serverURI = 'https://beta.nanoticker.info/tps_beta_push.php' #php code to accept
 headers = { "charset" : "utf-8", "Content-Type": "application/json" }
 countOld = []
 confCount = [] #contains confirmation count for different intervals
-serverConf = 0 #number of confirmations until last report to server
+serverConf = 0 #number of confirmations reported by websocket
+serverConfRolling = [] #rolling window of confirmations
 
 for i in tpsInterval:
   countOld.append(0)
@@ -110,6 +111,7 @@ def jobRPC(interval):
 def jobRPCServer():
   global serverConf
   global serverCPSInterval
+  global serverConfRolling
 
   #Get latest block count from nano RPC service
   if not rpc:
@@ -122,11 +124,16 @@ def jobRPCServer():
     peers = rpc.peers()
     version = rpc.version()['node_vendor']
     unixtime = time.time()
-    serverCPS = serverConf / serverCPSInterval
+
+    serverConfRolling.append(serverConf)
+    if (len(serverConfRolling) > (serverCPSInterval / serverInterval + 1)):
+      serverConfRolling.pop(0)
+    if (len(serverConfRolling) - 1 > 0):
+      serverCPS = (serverConfRolling[-1] - serverConfRolling[0]) / ((len(serverConfRolling) - 1) * serverInterval)
+    else:
+      serverCPS = 0
 
     postJSON = {'time':unixtime, 'count':blkCount, 'unchecked':blkUnch, 'interval': serverInterval, 'id': secret, 'name': name, 'peers': len(peers), 'version': version, 'cps': serverCPS}
-
-    serverConf = 0 #reset for next interval measure
 
   except Exception as e:
     print('Could not get blocks from node. Error: %r' %e)
