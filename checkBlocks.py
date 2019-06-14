@@ -20,6 +20,7 @@ tpsInterval = [10, 60, 300, 600, 3600] #intervals defined in seconds for local l
 enableStatfiles = False #set to True (not true) to enable saving to log files
 enableOutput = True #set to True (not true) to enable console logs
 enableCPS = True #set to True to enable confirmations per second from websocket subscription
+skipInvalid = False #filter out inactive confirmations from websocket
 statsPath = 'stats' #path to statfile basename (extension will be added automatically and two files for each interval will be created)
 
 #If sending to server to collect stats
@@ -175,8 +176,12 @@ async def cpsTask():
         # You can also add options here following instructions in
         #   https://github.com/nanocurrency/nano-node/wiki/WebSockets
 
-        await websocket.send(json.dumps(subscription("confirmation", ack=True)))
-        #print(await websocket.recv())  # ack
+        if (skipInvalid):
+          await websocket.send(json.dumps(subscription("confirmation", ack=True, options={"confirmation_type": "active"})))
+        else:
+          await websocket.send(json.dumps(subscription("confirmation", ack=True)))
+
+        print(await websocket.recv())  # ack
 
         init = True
         global serverConf
