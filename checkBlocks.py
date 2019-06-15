@@ -12,6 +12,7 @@ import json
 import datetime
 import time
 import requests
+import os
 
 #Settings
 rpc = RPCClient('http://[::1]:55000') #nano node address and port(I use this in node config: "::ffff:127.0.0.1"). You can also try with "http://[::1]:55000"
@@ -22,6 +23,8 @@ enableOutput = True #set to True (not true) to enable console logs
 enableCPS = True #set to True to enable confirmations per second from websocket subscription
 skipInvalid = False #filter out inactive confirmations from websocket
 statsPath = 'stats' #path to statfile basename (extension will be added automatically and two files for each interval will be created)
+includeCemented = True #if include cemented block count from node cli command (v19+) (may need sudo access to the node)
+nodePath = '/root/nano-node-19.0.4-Linux/nano_node' #absolute path to the nano node if using "includeCemented"(does not work with docker)
 
 #If sending to server to collect stats
 enableServer = False #set to True (not true)
@@ -72,9 +75,19 @@ def jobRPC(interval):
 
     cps = confCount[interval] / tpsInterval[interval]
 
-    #Create json and csv definitions
-    entryJSON = {'time':timestamp, 'count':blkCount, 'unchecked':blkUnch, 'peers': len(peers), 'interval': tpsInterval[interval], 'tps':arred(tps,2), 'cps':arred(cps,2)}
-    entryCSV = [timestamp, str(blkCount), str(blkUnch), str(len(peers)), str(tpsInterval[interval]), str(arred(tps,2)), str(arred(cps,2))]
+    #get cemented block count
+    if (includeCemented):
+      response = os.popen(nodePath + ' --debug_cemented_block_count').read()
+      cemented = response.split(": ",1)[1].replace("\n","")
+
+      #Create json and csv definitions
+      entryJSON = {'time':timestamp, 'count':blkCount, 'unchecked':blkUnch, 'cemented':cemented, 'peers': len(peers), 'interval': tpsInterval[interval], 'tps':arred(tps,2), 'cps':arred(cps,2)}
+      entryCSV = [timestamp, str(blkCount), str(blkUnch), str(cemented), str(len(peers)), str(tpsInterval[interval]), str(arred(tps,2)), str(arred(cps,2))]
+
+    else:
+      #Create json and csv definitions
+      entryJSON = {'time':timestamp, 'count':blkCount, 'unchecked':blkUnch, 'peers': len(peers), 'interval': tpsInterval[interval], 'tps':arred(tps,2), 'cps':arred(cps,2)}
+      entryCSV = [timestamp, str(blkCount), str(blkUnch), str(len(peers)), str(tpsInterval[interval]), str(arred(tps,2)), str(arred(cps,2))]
 
     confCount[interval] = 0 #reset for next interval measure
 
