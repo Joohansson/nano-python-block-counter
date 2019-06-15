@@ -23,7 +23,7 @@ enableOutput = True #set to True (not true) to enable console logs
 enableCPS = True #set to True to enable confirmations per second from websocket subscription
 skipInvalid = False #filter out inactive confirmations from websocket
 statsPath = 'stats' #path to statfile basename (extension will be added automatically and two files for each interval will be created)
-includeCemented = True #if include cemented block count from node cli command (v19+) (may need sudo access to the node)
+includeCemented = False #if include cemented block count from node cli command (v19+) (may need sudo access to the node)
 nodePath = '/root/nano-node-19.0.4-Linux/nano_node' #absolute path to the nano node if using "includeCemented"(does not work with docker)
 
 #If sending to server to collect stats
