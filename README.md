@@ -16,8 +16,7 @@ Save stats to json and csv files
 * pip3 install nano-python
 * pip3 install schedule
 * pip3 install asyncio
-* pip3 install websockets
-* Change settings in checkBlocks.py to match your nano node path, intervals and file path. Logfile and console output are optional. enableCPS is only available for node v19 and above (don't forget to enable websocket in the nano config).
+* Change settings in checkBlocks.py to match your intervals and file path. Logfile and console output are optional. includeCemented is only available for node v19 and above and will also calculate the CPS.
 * Run with python3 checkBlocks.py
 
 ### Optional: Push stat to [Demo server](https://beta.nanoticker.info)
