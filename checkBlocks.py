@@ -94,7 +94,7 @@ def jobRPC(interval):
     countOld[interval] = blkCount #update value for next iteration
 
     #Create json and csv definitions
-    entryJSON = {'time':timestamp, 'count':blkCount, 'unchecked':blkUnch, 'cemented':cemented, 'peers': len(peers), 'interval': tpsInterval[interval], 'tps':arred(tps,2), 'cps':arred(cps,2)}
+    entryJSON = {'time':timestamp, 'count':blkCount, 'unchecked':blkUnch, 'cemented':cemented, 'peers': len(peers), 'interval': tpsInterval[interval], 'bps':arred(tps,2), 'cps':arred(cps,2)}
     entryCSV = [timestamp, str(blkCount), str(blkUnch), str(cemented), str(len(peers)), str(tpsInterval[interval]), str(arred(tps,2)), str(arred(cps,2))]
 
     if enableOutput:
